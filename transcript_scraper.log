@@ -1,0 +1,11 @@
+2025-09-15 05:34:08,818 - ERROR - ValueError: Invalid channel URL. Use @handle or /channel/ID format.
+2025-09-15 05:34:36,335 - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-15 05:34:37,210 - INFO - Processing channel: Trevor Noah (ID: UC8bTQzxgvKkXDAaWkeuUlkg)
+2025-09-15 05:34:37,212 - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-15 05:34:39,667 - INFO - Found 188 new videos to process.
+2025-09-15 05:34:39,670 - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-15 05:34:54,117 - INFO - Saved transcript via yt-dlp for 'Between The Seasons: Stories From A South African Childhood - What Now? with Trevor Noah Podcast' (ID: DqzW06rI00A)
+2025-09-15 05:35:05,223 - INFO - Saved transcript via yt-dlp for 'The Trad Wife Paradox with Anne Helen Petersen! - What Now? with Trevor Noah Podcast' (ID: arCummRyZnE)
+2025-09-15 05:35:16,682 - INFO - Saved transcript via yt-dlp for 'Adam Grant Gives Trevor An Intellectual Wedgie! - What Now? with Trevor Noah Podcast' (ID: EnJNRY3sqNI)
+2025-09-15 05:35:27,404 - INFO - Saved transcript via yt-dlp for 'Questlove Isn't Manif*cking Around! - What Now? with Trevor Noah Podcast' (ID: 66OfrZvSs0Q)
+2025-09-15 05:35:38,367 - INFO - Saved transcript via yt-dlp for 'Orlando Bloom's Life On The Edge! - What Now? with Trevor Noah Podcast' (ID: 2TQ956LYExk)

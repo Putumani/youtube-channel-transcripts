@@ -9,7 +9,6 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import pkg_resources
 
-# Setup logging
 logging.basicConfig(
     filename='transcript_scraper.log',
     level=logging.INFO,
@@ -142,12 +141,12 @@ def save_progress(progress_file, processed_ids):
         print(f"Warning: Could not save progress file: {e}")
 
 def convert_vtt_to_txt(vtt_file, txt_file):
-    """Convert VTT subtitle file to clean text format."""
+    """Convert VTT subtitle file to clean text format, removing tags, timestamps, duplicates, and non-speech artifacts."""
     try:
+        seen_lines = set() 
         with open(vtt_file, 'r', encoding='utf-8') as vtt, open(txt_file, 'w', encoding='utf-8') as txt:
             for line in vtt:
                 line = line.strip()
-                # Skip VTT metadata lines and timestamps
                 if (not line or 
                     line.startswith('WEBVTT') or 
                     line.startswith('Kind:') or 
@@ -155,7 +154,20 @@ def convert_vtt_to_txt(vtt_file, txt_file):
                     re.match(r'^\d\d:\d\d', line) or
                     '-->' in line):
                     continue
-                txt.write(line + '\n')
+                
+                clean_line = re.sub(r'<[^>]+>', '', line)
+                clean_line = re.sub(r'&[^;]+;', '', clean_line)
+                clean_line = re.sub(r'\d{2}:\d{2}:\d{2}\.\d{3}', '', clean_line)
+                clean_line = re.sub(r'\[.*?\]', '', clean_line)
+                clean_line = clean_line.strip()
+                
+                if not clean_line:
+                    continue
+                
+                if clean_line not in seen_lines:
+                    seen_lines.add(clean_line)
+                    txt.write(clean_line + '\n')
+        
         return True
     except Exception as e:
         logging.error(f"Error converting VTT to TXT: {str(e)}")
