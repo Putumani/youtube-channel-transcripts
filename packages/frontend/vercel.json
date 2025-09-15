@@ -1,21 +1,21 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "packages/frontend/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist",
-                "nodeVersion": "22.x"
-            }
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "packages/frontend/dist/$1"
-        }
-    ],
-    "installCommand": "npm install -g pnpm && pnpm install",
-    "buildCommand": "pnpm run build"
+  "version": 2,
+  "builds": [
+    {
+      "src": "packages/frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist",
+        "nodeVersion": "22.x"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "packages/frontend/dist/$1"
+    }
+  ],
+  "installCommand": "npm install -g pnpm && pnpm install",
+  "buildCommand": "pnpm run build"
 }

@@ -1,72 +1,80 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Toaster, useToast } from '@/components/ui/sonner'
-import './index.css'
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Toaster, useToast } from '@/components/ui/sonner';
+import './index.css';
 
 function App() {
-  const [channelUrl, setChannelUrl] = useState('')
-  const [apiKey, setApiKey] = useState('')
-  const [channels, setChannels] = useState([])
-  const [transcripts, setTranscripts] = useState([])
-  const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
+  const [channelUrl, setChannelUrl] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [channels, setChannels] = useState([]);
+  const [transcripts, setTranscripts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    fetchChannels()
-  }, [])
+    fetchChannels();
+  }, []);
 
   const fetchChannels = async () => {
     try {
-      const { data, error } = await supabase.from('channels').select()
-      if (error) throw error
-      setChannels(data || [])
+      const { data, error } = await supabase.from('channels').select();
+      if (error) throw error;
+      setChannels(data || []);
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to fetch channels: ' + error.message,
         variant: 'destructive',
-      })
+      });
     }
-  }
+  };
 
   const fetchTranscripts = async (channelId) => {
     try {
       const { data, error } = await supabase
         .from('transcripts')
         .select()
-        .eq('channel_id', channelId)
-      if (error) throw error
-      setTranscripts(data || [])
+        .eq('channel_id', channelId);
+      if (error) throw error;
+      setTranscripts(data || []);
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to fetch transcripts: ' + error.message,
         variant: 'destructive',
-      })
+      });
     }
-  }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
     try {
       toast({
         title: 'Processing',
-        description: 'Please run the backend script with the provided URL and API key.',
-      })
+        description:
+          'Please run the backend script with the provided URL and API key.',
+      });
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to process request: ' + error.message,
         variant: 'destructive',
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto p-4">
@@ -76,7 +84,10 @@ function App() {
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="mb-6 space-y-4">
         <div>
-          <label htmlFor="channelUrl" className="block text-sm font-medium mb-1">
+          <label
+            htmlFor="channelUrl"
+            className="block text-sm font-medium mb-1"
+          >
             YouTube Channel URL
           </label>
           <Input
@@ -164,7 +175,7 @@ function App() {
         </>
       )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

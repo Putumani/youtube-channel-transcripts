@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "Monorepo for YouTube transcript scraper",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "vercel-build": "pnpm run build"
+    "frontend:dev": "pnpm --filter frontend dev",
+    "frontend:build": "pnpm --filter frontend build",
+    "backend:run": "pnpm --filter backend run",
+    "lint": "eslint packages/frontend",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "eslint": "^8.57.1",
