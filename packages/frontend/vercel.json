@@ -1,6 +1,23 @@
 {
-    "framework": "vite",
-    "buildCommand": "pnpm build",
-    "outputDirectory": "dist",
-    "installCommand": "pnpm install"
+    "functions": {
+        "api/*.js": {
+            "runtime": "@vercel/node@2"
+        }
+    },
+    "builds": [
+        {
+            "src": "packages/frontend/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist",
+                "nodeVersion": "22.x"
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "packages/frontend/dist/$1"
+        }
+    ]
 }
