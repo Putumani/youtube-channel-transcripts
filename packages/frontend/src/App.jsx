@@ -14,17 +14,15 @@ function App() {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
-  // Fetch channels on mount
   useEffect(() => {
     fetchChannels()
   }, [])
 
-  // Fetch channels from Supabase
   const fetchChannels = async () => {
     try {
       const { data, error } = await supabase.from('channels').select()
       if (error) throw error
-      setChannels(data)
+      setChannels(data || [])
     } catch (error) {
       toast({
         title: 'Error',
@@ -34,7 +32,6 @@ function App() {
     }
   }
 
-  // Fetch transcripts for a specific channel
   const fetchTranscripts = async (channelId) => {
     try {
       const { data, error } = await supabase
@@ -42,7 +39,7 @@ function App() {
         .select()
         .eq('channel_id', channelId)
       if (error) throw error
-      setTranscripts(data)
+      setTranscripts(data || [])
     } catch (error) {
       toast({
         title: 'Error',
@@ -52,7 +49,6 @@ function App() {
     }
   }
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)

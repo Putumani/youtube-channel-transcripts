@@ -3,14 +3,21 @@
   "version": "1.0.0",
   "description": "Monorepo for YouTube transcript scraper",
   "scripts": {
-    "frontend:dev": "pnpm --filter frontend dev",
-    "frontend:build": "pnpm --filter frontend build",
-    "backend:run": "pnpm --filter backend run",
-    "lint": "eslint packages/frontend",
-    "format": "prettier --write ."
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "tailwind:build": "npx tailwindcss -i ./src/index.css -o ./src/tailwind-output.css --watch",
+    "dev:with-tailwind": "npm run tailwind:build & vite"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
     "prettier": "^3.6.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "tailwindcss": "3.4.17",
+      "tailwindcss-animate": "1.0.7"
+    }
   }
 }

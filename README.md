@@ -1,34 +1,19 @@
 *YouTube Channel Transcripts
-   A monorepo for scraping and displaying YouTube channel transcripts using React, shadcn/ui, Python, and Supabase.
+This project contains transcripts for YouTube channel videos. The purpose is to provide accessible text versions of video content for analysis, reference, or other uses.
+Features
 
-**Structure
-packages/frontend: React app with shadcn/ui for displaying transcripts.
-packages/backend: Python script for scraping transcripts and storing in Supabase.
-supabase/migrations: Database schema for Supabase.
+**Transcripts organized by video or channel.
+Easy-to-read markdown format.
 
-**Setup
-- Install dependencies:pnpm install
+Getting Started
 
-
-**Set up environment variables (see below).
-- Run the frontend:pnpm frontend:dev
-
-- Run the backend:pnpm backend:run
+Clone the repository:git clone https://github.com/Putumani/youtube-channel-transcripts.git
 
 
-
-**Environment Variables
-
-- Frontend: Create packages/frontend/.env with:VITE_SUPABASE_URL=YOUR_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-
-- Backend: Create packages/backend/.env with:SUPABASE_URL=YOUR_SUPABASE_URL
-SUPABASE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+Navigate to the project folder:cd youtube-channel-transcripts
 
 
+Explore the transcript files.
 
-**Deployment
-
-- Frontend: Deploy to Vercel or Netlify.
-- Backend: Deploy as a serverless function (e.g., Vercel Functions) or run on a server (e.g., Render).
-
+License
+This project is licensed under the MIT License.
