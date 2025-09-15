@@ -1,0 +1,16 @@
+{
+  "name": "youtube-channel-transcripts",
+  "version": "1.0.0",
+  "description": "Monorepo for YouTube transcript scraper",
+  "scripts": {
+    "frontend:dev": "pnpm --filter frontend dev",
+    "frontend:build": "pnpm --filter frontend build",
+    "backend:run": "pnpm --filter backend run",
+    "lint": "eslint packages/frontend",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.6.2"
+  }
+}
