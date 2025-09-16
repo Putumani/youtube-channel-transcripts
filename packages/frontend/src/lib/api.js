@@ -1,18 +1,24 @@
-let API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+const LOCAL_BASE_URL = import.meta.env.DEV
 
-if (import.meta.env.MODE === 'development') {
-    API_BASE_URL = 'http://localhost:5000';
-} else {
-    API_BASE_URL = 'https://youtube-channel-transcripts.onrender.com';
+if (!API_BASE_URL && !LOCAL_BASE_URL) {
+    console.error('VITE_API_BASE_URL environment variable is not set for production')
 }
 
-if (!API_BASE_URL) {
-    console.error('API_BASE_URL is not set');
+const getApiBaseUrl = () => {
+    if (import.meta.env.DEV) {
+        return 'http://localhost:5000'
+    }
+    if (!API_BASE_URL) {
+        throw new Error('VITE_API_BASE_URL is required for production')
+    }
+    return API_BASE_URL
 }
 
 export const api = {
-    async scrapeTranscripts(channelUrl, delay = 3, maxVideos = 50, cookiesFile = '/path/to/cookies.txt') {
-        const response = await fetch(`${API_BASE_URL}/api/scrape-transcripts`, {
+    async scrapeTranscripts(channelUrl, delay = 3, maxVideos = 50) {
+        const baseUrl = getApiBaseUrl()
+        const response = await fetch(`${baseUrl}/api/scrape-transcripts`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -20,21 +26,21 @@ export const api = {
             body: JSON.stringify({
                 channel_url: channelUrl,
                 delay,
-                max_videos: maxVideos,
-                cookies_file: cookiesFile
+                max_videos: maxVideos
             }),
-        });
+        })
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to scrape transcripts');
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to scrape transcripts')
         }
 
-        return response.json();
+        return response.json()
     },
 
     async healthCheck() {
-        const response = await fetch(`${API_BASE_URL}/api/health`);
-        return response.json();
+        const baseUrl = getApiBaseUrl()
+        const response = await fetch(`${baseUrl}/api/health`)
+        return response.json()
     }
-};
+}
