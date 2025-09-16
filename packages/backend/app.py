@@ -4,15 +4,17 @@ import os
 import logging
 from youtube_channel_transcripts import process_channel_transcripts
 
-# Initialize Flask app
-app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend requests
-
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('transcript_scraper.log'),
+        logging.StreamHandler()
+    ]
 )
+
+app = Flask(__name__)
+CORS(app)
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -23,11 +25,10 @@ def health_check():
 def scrape_transcripts():
     """API endpoint to scrape transcripts for a YouTube channel"""
     try:
-        # Get data from request
         data = request.json
         channel_url = data.get('channel_url')
+        cookies_file = data.get('cookies_file')
         
-        # Get API key from environment
         api_key = os.environ.get('YOUTUBE_API_KEY')
         
         if not api_key:
@@ -38,23 +39,21 @@ def scrape_transcripts():
             logging.error("Channel URL is required")
             return jsonify({'error': 'Channel URL is required'}), 400
         
-        # Validate channel URL format
         if not ('youtube.com' in channel_url or 'youtu.be' in channel_url):
             logging.error(f"Invalid YouTube URL: {channel_url}")
             return jsonify({'error': 'Invalid YouTube URL'}), 400
         
-        # Get optional parameters
-        delay = data.get('delay', 3)
-        max_videos = data.get('max_videos', 50)
+        delay = float(data.get('delay', 5))
+        max_videos = int(data.get('max_videos', 50))
         
         logging.info(f"Processing channel: {channel_url}")
         
-        # Process the channel
         result = process_channel_transcripts(
             api_key=api_key,
             channel_url=channel_url,
             delay=delay,
-            max_videos=max_videos
+            max_videos=max_videos,
+            cookies_file=cookies_file
         )
         
         logging.info(f"Successfully processed channel: {result['channel_title']}")
@@ -63,7 +62,8 @@ def scrape_transcripts():
             'channel_title': result['channel_title'],
             'videos_processed': result['videos_processed'],
             'total_videos_found': result['total_videos'],
-            'message': f"Processed {result['videos_processed']} out of {result['total_videos']} videos"
+            'output_dir': result['output_dir'],
+            'message': result['message']
         })
         
     except ValueError as e:
