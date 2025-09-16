@@ -15,7 +15,21 @@ logging.basicConfig(
 )
 
 app = Flask(__name__)
-CORS(app)
+
+# Explicit CORS configuration to allow local and production frontend origins
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "http://localhost:3000",      # Vite default
+            "http://localhost:5173",      # Vite common port
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "*"                           # Allow all for Render testing (restrict in production)
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 @app.route('/api/health', methods=['GET'])
 def health_check():

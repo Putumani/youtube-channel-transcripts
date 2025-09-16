@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Toaster, useToast } from '@/components/ui/sonner'
+import { Toaster, useToast } from '@/components/ui/sonner'  // Import useToast directly from sonner
 import { api } from '@/lib/api'
 import './index.css'
 
@@ -13,7 +13,6 @@ function App() {
   const [transcripts, setTranscripts] = useState([])
   const [loading, setLoading] = useState(false)
   const [scraping, setScraping] = useState(false)
-  const { toast } = useToast()
 
   useEffect(() => {
     fetchChannels()
@@ -25,7 +24,7 @@ function App() {
       if (error) throw error
       setChannels(data || [])
     } catch (error) {
-      toast({
+      useToast({
         title: 'Error',
         description: 'Failed to fetch channels: ' + error.message,
         variant: 'destructive',
@@ -42,7 +41,7 @@ function App() {
       if (error) throw error
       setTranscripts(data || [])
     } catch (error) {
-      toast({
+      useToast({
         title: 'Error',
         description: 'Failed to fetch transcripts: ' + error.message,
         variant: 'destructive',
@@ -57,7 +56,7 @@ function App() {
     try {
       const result = await api.scrapeTranscripts(channelUrl, 3, 50)
 
-      toast({
+      useToast({
         title: 'Success',
         description: `Processed ${result.videos_processed} videos from ${result.channel_title}`,
       })
@@ -65,7 +64,7 @@ function App() {
       fetchChannels()
 
     } catch (error) {
-      toast({
+      useToast({
         title: 'Error',
         description: 'Failed to scrape transcripts: ' + error.message,
         variant: 'destructive',
@@ -77,7 +76,7 @@ function App() {
 
   return (
     <div className="container mx-auto p-4">
-      <Toaster />
+      <Toaster />  {/* Keep this for rendering toasts */}
       <h1 className="text-2xl font-bold mb-4">YouTube Transcript Scraper</h1>
 
       <form onSubmit={handleScrapeTranscripts} className="mb-6 space-y-4">

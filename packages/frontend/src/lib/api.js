@@ -1,46 +1,46 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-const LOCAL_BASE_URL = import.meta.env.DEV
+let API_BASE_URL;
 
-if (!API_BASE_URL && !LOCAL_BASE_URL) {
-    console.error('VITE_API_BASE_URL environment variable is not set for production')
+if (import.meta.env.MODE === 'development') {
+    API_BASE_URL = 'http://localhost:5000';
+} else {
+    API_BASE_URL = 'https://youtube-channel-transcripts.onrender.com';
 }
 
-const getApiBaseUrl = () => {
-    if (import.meta.env.DEV) {
-        return 'http://localhost:5000'
-    }
-    if (!API_BASE_URL) {
-        throw new Error('VITE_API_BASE_URL is required for production')
-    }
-    return API_BASE_URL
+if (!API_BASE_URL) {
+    console.error('API_BASE_URL is not set');
 }
 
 export const api = {
-    async scrapeTranscripts(channelUrl, delay = 3, maxVideos = 50) {
-        const baseUrl = getApiBaseUrl()
-        const response = await fetch(`${baseUrl}/api/scrape-transcripts`, {
+    async scrapeTranscripts(channelUrl, delay = 3, maxVideos = 50, cookiesFile = null) {  // Make cookiesFile optional
+        const body = {
+            channel_url: channelUrl,
+            delay,
+            max_videos: maxVideos
+        };
+
+        // Only include cookies_file if provided (e.g., for local testing)
+        if (cookiesFile) {
+            body.cookies_file = cookiesFile;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/scrape-transcripts`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                channel_url: channelUrl,
-                delay,
-                max_videos: maxVideos
-            }),
-        })
+            body: JSON.stringify(body),
+        });
 
         if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.error || 'Failed to scrape transcripts')
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to scrape transcripts');
         }
 
-        return response.json()
+        return response.json();
     },
 
     async healthCheck() {
-        const baseUrl = getApiBaseUrl()
-        const response = await fetch(`${baseUrl}/api/health`)
-        return response.json()
+        const response = await fetch(`${API_BASE_URL}/api/health`);
+        return response.json();
     }
-}
+};
