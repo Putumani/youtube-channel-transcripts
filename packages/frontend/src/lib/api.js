@@ -1,9 +1,9 @@
 let API_BASE_URL;
 
 if (import.meta.env.MODE === 'development') {
-    API_BASE_URL = 'http://localhost:5000';
-} else {
     API_BASE_URL = 'https://youtube-channel-transcripts.onrender.com';
+} else {
+    API_BASE_URL = 'http://localhost:5000';
 }
 
 if (!API_BASE_URL) {
@@ -11,14 +11,12 @@ if (!API_BASE_URL) {
 }
 
 export const api = {
-    async scrapeTranscripts(channelUrl, delay = 3, maxVideos = 50, cookiesFile = null) {  // Make cookiesFile optional
+    async scrapeTranscripts(channelUrl, delay = 3, maxVideos = 50, cookiesFile = null) {
         const body = {
             channel_url: channelUrl,
             delay,
             max_videos: maxVideos
         };
-
-        // Only include cookies_file if provided (e.g., for local testing)
         if (cookiesFile) {
             body.cookies_file = cookiesFile;
         }
