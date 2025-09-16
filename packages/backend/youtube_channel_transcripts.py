@@ -7,7 +7,7 @@ import subprocess
 from urllib.parse import urlparse, parse_qs
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import pkg_resources
+import importlib.metadata
 
 logging.basicConfig(
     filename='transcript_scraper.log',
@@ -193,17 +193,15 @@ def fetch_yt_dlp_transcript(video_id, title, output_dir):
         
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=300)
         
-        # Look for the generated VTT file
         vtt_file = output_pattern + '.en.vtt'
         if os.path.exists(vtt_file):
             txt_file = output_pattern + '.txt'
             if convert_vtt_to_txt(vtt_file, txt_file):
-                os.remove(vtt_file)  # Remove the VTT file after conversion
+                os.remove(vtt_file)  
                 logging.info(f"Saved transcript via yt-dlp for '{title}' (ID: {video_id})")
                 print(f"✓ Saved transcript via yt-dlp for '{title}' (ID: {video_id})")
                 return True
             else:
-                # If conversion fails, keep the VTT file
                 logging.warning(f"Conversion failed, keeping VTT file for '{title}' (ID: {video_id})")
                 print(f"⚠ Conversion failed, keeping VTT file for '{title}' (ID: {video_id})")
                 return True
@@ -231,7 +229,7 @@ def fetch_and_save_transcript(video_id, title, output_dir, delay=2, processed_id
         print(f"↻ Skipped '{title}' (ID: {video_id}) - Already processed")
         return False
     
-    for attempt in range(3):  # Try 3 times
+    for attempt in range(3):  
         try:
             success = fetch_yt_dlp_transcript(video_id, title, output_dir)
             if success:
@@ -240,7 +238,7 @@ def fetch_and_save_transcript(video_id, title, output_dir, delay=2, processed_id
                 return True
             else:
                 if attempt < 2:
-                    wait_time = 10 * (attempt + 1)  # 10s, 20s
+                    wait_time = 10 * (attempt + 1)  
                     print(f"Retrying after {wait_time}s... (attempt {attempt + 1}/3)")
                     time.sleep(wait_time)
                     continue

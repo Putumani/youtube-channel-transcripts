@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: youtube-transcript-scraper
+    env: python
+    plan: free
+    buildCommand: pip install -r packages/backend/requirements.txt
+    startCommand: cd packages/backend && python youtube_channel_transcripts.py
+    envVars:
+      - key: SUPABASE_URL
+        fromSecret: SUPABASE_URL
+      - key: SUPABASE_KEY
+        fromSecret: SUPABASE_KEY
+      - key: YOUTUBE_API_KEY
+        fromSecret: YOUTUBE_API_KEY
