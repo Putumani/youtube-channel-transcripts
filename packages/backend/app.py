@@ -5,7 +5,7 @@ import logging
 from youtube_channel_transcripts import process_channel_transcripts
 
 # Configure logging
-log_file = '/opt/render/transcript_scraper.log' if os.getenv('RENDER') else 'transcript_scraper.log'
+log_file = '/opt/render/transcript_scraper.log' if os.getenv('RENDER') == 'true' else 'transcript_scraper.log'
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -22,8 +22,7 @@ CORS(app, resources={
     r"/api/*": {
         "origins": [
             "http://localhost:5173",  # Vite dev server
-            "https://your-frontend-domain.com",  # Replace with your frontend's deployed URL
-            "https://*.onrender.com"  # Render-hosted frontend
+            "https://youtube-channel-transcripts.onrender.com",  # Render-hosted frontend
         ],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
@@ -43,7 +42,6 @@ def scrape_transcripts():
         channel_url = data.get('channel_url')
         delay = float(data.get('delay', 3))  # Default to 3 seconds
         max_videos = int(data.get('max_videos', 50))
-        cookies_file = '/opt/render/cookies.txt' if os.getenv('RENDER') else './cookies.txt'
         
         api_key = os.environ.get('YOUTUBE_API_KEY')
         
@@ -69,8 +67,7 @@ def scrape_transcripts():
             api_key=api_key,
             channel_url=channel_url,
             delay=delay,
-            max_videos=max_videos,
-            cookies_file=cookies_file
+            max_videos=max_videos
         )
         
         logging.info(f"Successfully processed channel: {result['channel_title']}")
@@ -88,8 +85,8 @@ def scrape_transcripts():
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         logging.error(f"Unexpected error: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', False))
+    app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG', 'false') == 'true')
