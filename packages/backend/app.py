@@ -5,26 +5,25 @@ import logging
 from youtube_channel_transcripts import process_channel_transcripts
 
 # Configure logging
+log_file = '/opt/render/transcript_scraper.log' if os.getenv('RENDER') else 'transcript_scraper.log'
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('transcript_scraper.log'),
+        logging.FileHandler(log_file),
         logging.StreamHandler()
     ]
 )
 
 app = Flask(__name__)
 
-# Explicit CORS configuration to allow local and production frontend origins
+# Configure CORS to allow frontend origins
 CORS(app, resources={
     r"/api/*": {
         "origins": [
-            "http://localhost:3000",      # Vite default
-            "http://localhost:5173",      # Vite common port
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "*"                           # Allow all for Render testing (restrict in production)
+            "http://localhost:5173",  # Vite dev server
+            "https://your-frontend-domain.com",  # Replace with your frontend's deployed URL
+            "https://*.onrender.com"  # Render-hosted frontend
         ],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
@@ -42,9 +41,9 @@ def scrape_transcripts():
     try:
         data = request.json
         channel_url = data.get('channel_url')
-        cookies_file = data.get('cookies_file')
-        delay = float(data.get('delay', 2))  # Default to 2 seconds
+        delay = float(data.get('delay', 3))  # Default to 3 seconds
         max_videos = int(data.get('max_videos', 50))
+        cookies_file = '/opt/render/cookies.txt' if os.getenv('RENDER') else './cookies.txt'
         
         api_key = os.environ.get('YOUTUBE_API_KEY')
         

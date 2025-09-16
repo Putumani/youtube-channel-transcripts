@@ -1,84 +1,94 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Toaster, useToast } from '@/components/ui/sonner'  // Import useToast directly from sonner
-import { api } from '@/lib/api'
-import './index.css'
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Toaster, useToast } from '@/components/ui/sonner';
+import { api } from '@/lib/api';
+import './index.css';
 
 function App() {
-  const [channelUrl, setChannelUrl] = useState('')
-  const [channels, setChannels] = useState([])
-  const [transcripts, setTranscripts] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [scraping, setScraping] = useState(false)
+  const [channelUrl, setChannelUrl] = useState('');
+  const [channels, setChannels] = useState([]);
+  const [transcripts, setTranscripts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [scraping, setScraping] = useState(false);
+
+  const toast = useToast;
 
   useEffect(() => {
-    fetchChannels()
-  }, [])
+    fetchChannels();
+  }, []);
 
   const fetchChannels = async () => {
     try {
-      const { data, error } = await supabase.from('channels').select()
-      if (error) throw error
-      setChannels(data || [])
+      setLoading(true);
+      const { data, error } = await supabase.from('channels').select();
+      if (error) throw error;
+      setChannels(data || []);
     } catch (error) {
-      useToast({
+      toast({
         title: 'Error',
-        description: 'Failed to fetch channels: ' + error.message,
+        description: error.message.includes('429')
+          ? 'Unable to fetch channels due to rate limits. Please try again later.'
+          : 'Failed to fetch channels: ' + error.message,
         variant: 'destructive',
-      })
+      });
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const fetchTranscripts = async (channelId) => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('transcripts')
         .select()
-        .eq('channel_id', channelId)
-      if (error) throw error
-      setTranscripts(data || [])
+        .eq('channel_id', channelId);
+      if (error) throw error;
+      setTranscripts(data || []);
     } catch (error) {
-      useToast({
+      toast({
         title: 'Error',
-        description: 'Failed to fetch transcripts: ' + error.message,
+        description: error.message.includes('429')
+          ? 'Unable to fetch transcripts due to rate limits. Please try again later.'
+          : 'Failed to fetch transcripts: ' + error.message,
         variant: 'destructive',
-      })
+      });
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const handleScrapeTranscripts = async (e) => {
-    e.preventDefault()
-    setScraping(true)
+    e.preventDefault();
+    setScraping(true);
 
     try {
-      const result = await api.scrapeTranscripts(channelUrl, 3, 50)
-
-      useToast({
+      const result = await api.scrapeTranscripts(channelUrl, 3, 50);
+      toast({
         title: 'Success',
         description: `Processed ${result.videos_processed} videos from ${result.channel_title}`,
-      })
-
-      fetchChannels()
-
+      });
+      fetchChannels();
     } catch (error) {
-      useToast({
+      toast({
         title: 'Error',
-        description: 'Failed to scrape transcripts: ' + error.message,
+        description: error.message.includes('429')
+          ? 'Unable to scrape due to YouTube rate limits. Please try again later.'
+          : 'Failed to scrape transcripts: ' + error.message,
         variant: 'destructive',
-      })
+      });
     } finally {
-      setScraping(false)
+      setScraping(false);
     }
-  }
+  };
 
   return (
     <div className="container mx-auto p-4">
-      <Toaster />  {/* Keep this for rendering toasts */}
+      <Toaster />
       <h1 className="text-2xl font-bold mb-4">YouTube Transcript Scraper</h1>
-
       <form onSubmit={handleScrapeTranscripts} className="mb-6 space-y-4">
         <div>
           <label htmlFor="channelUrl" className="block text-sm font-medium mb-1">
@@ -97,7 +107,6 @@ function App() {
           {scraping ? 'Scraping Transcripts...' : 'Scrape Transcripts'}
         </Button>
       </form>
-
       <h2 className="text-xl font-semibold mb-2">Channels</h2>
       <Table>
         <TableHeader>
@@ -117,6 +126,7 @@ function App() {
                   variant="outline"
                   size="sm"
                   onClick={() => fetchTranscripts(channel.channel_id)}
+                  disabled={loading}
                 >
                   View Transcripts
                 </Button>
@@ -125,7 +135,6 @@ function App() {
           ))}
         </TableBody>
       </Table>
-
       {transcripts.length > 0 && (
         <>
           <h2 className="text-xl font-semibold mt-6 mb-2">Transcripts</h2>
@@ -155,7 +164,7 @@ function App() {
         </>
       )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

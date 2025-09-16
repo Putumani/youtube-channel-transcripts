@@ -7,16 +7,9 @@ import subprocess
 from urllib.parse import urlparse, parse_qs
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from supabase import create_client
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('transcript_scraper.log'),
-        logging.StreamHandler()
-    ]
-)
+# Configure logging (already set in app.py)
 
 def parse_channel_url(url):
     """Parse YouTube channel URL to extract handle or ID."""
@@ -34,7 +27,7 @@ def parse_channel_url(url):
 
 def get_channel_details(api_key, filter_params):
     """Get channel ID, title, and uploads playlist ID."""
-    youtube = build('youtube', 'v3', developerKey=api_key)
+    youtube = build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
     request = youtube.channels().list(
         part='id,snippet,contentDetails',
         **filter_params
@@ -53,7 +46,7 @@ def get_channel_details(api_key, filter_params):
 
 def get_all_video_ids(api_key, playlist_id, max_videos=50):
     """Fetch video IDs from the uploads playlist with limit."""
-    youtube = build('youtube', 'v3', developerKey=api_key)
+    youtube = build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
     video_ids = []
     next_page_token = None
     
@@ -88,7 +81,7 @@ def get_all_video_ids(api_key, playlist_id, max_videos=50):
 
 def get_video_titles(api_key, video_ids):
     """Fetch video titles in batches of 50."""
-    youtube = build('youtube', 'v3', developerKey=api_key)
+    youtube = build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
     title_map = {}
     batch_size = 50
     
@@ -163,10 +156,7 @@ def convert_vtt_to_txt(vtt_file, txt_file):
                 clean_line = re.sub(r'\[.*?\]', '', clean_line)
                 clean_line = clean_line.strip()
                 
-                if not clean_line:
-                    continue
-                
-                if clean_line not in seen_lines:
+                if clean_line and clean_line not in seen_lines:
                     seen_lines.add(clean_line)
                     txt.write(clean_line + '\n')
         
@@ -174,6 +164,40 @@ def convert_vtt_to_txt(vtt_file, txt_file):
     except Exception as e:
         logging.error(f"Error converting VTT to TXT: {str(e)}")
         return False
+
+def save_to_supabase(channel_details, video_id, title, transcript_path):
+    """Save channel and transcript data to Supabase."""
+    try:
+        supabase_url = os.environ.get('SUPABASE_URL')
+        supabase_key = os.environ.get('SUPABASE_ANON_KEY')
+        if not supabase_url or not supabase_key:
+            logging.warning("Supabase credentials not configured. Skipping save.")
+            return
+        
+        supabase = create_client(supabase_url, supabase_key)
+        
+        # Save channel
+        channel_data = {
+            'channel_id': channel_details['id'],
+            'title': channel_details['title']
+        }
+        supabase.table('channels').upsert(channel_data).execute()
+        
+        # Read transcript content
+        with open(transcript_path, 'r', encoding='utf-8') as f:
+            transcript_content = f.read()
+        
+        # Save transcript
+        transcript_data = {
+            'channel_id': channel_details['id'],
+            'video_id': video_id,
+            'title': title,
+            'transcript': transcript_content
+        }
+        supabase.table('transcripts').upsert(transcript_data).execute()
+        logging.info(f"Saved transcript for '{title}' to Supabase")
+    except Exception as e:
+        logging.error(f"Failed to save to Supabase: {str(e)}")
 
 def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None):
     """Use yt-dlp to fetch subtitles."""
@@ -196,7 +220,7 @@ def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None):
             cmd.extend(['--cookies', cookies_file])
             logging.info(f"Using cookies file: {cookies_file}")
         else:
-            logging.warning("No cookies file provided. This may cause HTTP 429 errors.")
+            logging.warning("No cookies file provided or file not found. This may cause HTTP 429 errors.")
         
         cmd.append(f"https://www.youtube.com/watch?v={video_id}")
         
@@ -227,14 +251,14 @@ def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None):
         logging.error(f"yt-dlp error for '{title}' (ID: {video_id}): {str(e)}")
         return False
 
-def process_channel_transcripts(api_key, channel_url, delay=2, max_videos=50, cookies_file=None):
+def process_channel_transcripts(api_key, channel_url, delay=3, max_videos=50, cookies_file=None):
     """Main function to process transcripts for a channel."""
     try:
         filter_params = parse_channel_url(channel_url)
         channel_details = get_channel_details(api_key, filter_params)
         channel_title = sanitize_filename(channel_details['title'])
-        output_dir = os.path.join(os.getcwd(), channel_title)
-        progress_file = os.path.join(os.getcwd(), f"{channel_title}_progress.json")
+        output_dir = os.path.join('/opt/render' if os.getenv('RENDER') else '.', channel_title)
+        progress_file = os.path.join('/opt/render' if os.getenv('RENDER') else '.', f"{channel_title}_progress.json")
         
         os.makedirs(output_dir, exist_ok=True)
         
@@ -267,9 +291,12 @@ def process_channel_transcripts(api_key, channel_url, delay=2, max_videos=50, co
                     success_count += 1
                     processed_ids.add(video_id)
                     save_progress(progress_file, processed_ids)
+                    txt_file = os.path.join(output_dir, f"{sanitize_filename(title)}_{video_id}.txt")
+                    if os.path.exists(txt_file):
+                        save_to_supabase(channel_details, video_id, title, txt_file)
                     break
                 elif attempt < 2:
-                    wait_time = (2 ** attempt) * 10  
+                    wait_time = (2 ** attempt) * 10
                     logging.info(f"Retrying after {wait_time}s... (attempt {attempt + 1}/3)")
                     time.sleep(wait_time)
                     continue
@@ -278,7 +305,7 @@ def process_channel_transcripts(api_key, channel_url, delay=2, max_videos=50, co
                     save_progress(progress_file, processed_ids)
                     break
             
-            time.sleep(max(2, min(delay, 5)))  
+            time.sleep(max(2, min(delay, 5)))
         
         return {
             'channel_title': channel_details['title'],
