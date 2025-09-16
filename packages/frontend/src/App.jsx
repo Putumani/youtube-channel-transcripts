@@ -15,12 +15,10 @@ function App() {
   const [scraping, setScraping] = useState(false)
   const { toast } = useToast()
 
-  // Fetch channels on mount
   useEffect(() => {
     fetchChannels()
   }, [])
 
-  // Fetch channels from Supabase
   const fetchChannels = async () => {
     try {
       const { data, error } = await supabase.from('channels').select()
@@ -35,7 +33,6 @@ function App() {
     }
   }
 
-  // Fetch transcripts for a specific channel
   const fetchTranscripts = async (channelId) => {
     try {
       const { data, error } = await supabase
@@ -53,7 +50,6 @@ function App() {
     }
   }
 
-  // Handle form submission to scrape transcripts
   const handleScrapeTranscripts = async (e) => {
     e.preventDefault()
     setScraping(true)
@@ -66,7 +62,6 @@ function App() {
         description: `Processed ${result.videos_processed} videos from ${result.channel_title}`,
       })
 
-      // Refresh channels list after scraping
       fetchChannels()
 
     } catch (error) {
@@ -85,7 +80,6 @@ function App() {
       <Toaster />
       <h1 className="text-2xl font-bold mb-4">YouTube Transcript Scraper</h1>
 
-      {/* Input Form */}
       <form onSubmit={handleScrapeTranscripts} className="mb-6 space-y-4">
         <div>
           <label htmlFor="channelUrl" className="block text-sm font-medium mb-1">
@@ -105,7 +99,6 @@ function App() {
         </Button>
       </form>
 
-      {/* Channels List */}
       <h2 className="text-xl font-semibold mb-2">Channels</h2>
       <Table>
         <TableHeader>
@@ -134,7 +127,6 @@ function App() {
         </TableBody>
       </Table>
 
-      {/* Transcripts List */}
       {transcripts.length > 0 && (
         <>
           <h2 className="text-xl font-semibold mt-6 mb-2">Transcripts</h2>

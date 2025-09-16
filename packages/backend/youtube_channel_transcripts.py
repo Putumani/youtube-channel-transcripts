@@ -8,6 +8,7 @@ from urllib.parse import urlparse, parse_qs
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -174,56 +175,8 @@ def convert_vtt_to_txt(vtt_file, txt_file):
         logging.error(f"Error converting VTT to TXT: {str(e)}")
         return False
 
-def fetch_youtube_api_transcript(api_key, video_id, output_dir, title):
-    """Fetch transcript using YouTube Data API."""
-    try:
-        youtube = build('youtube', 'v3', developerKey=api_key)
-        request = youtube.captions().list(
-            part='id,snippet',
-            videoId=video_id
-        )
-        response = request.execute()
-        
-        caption_id = None
-        for item in response.get('items', []):
-            if item['snippet']['language'] == 'en':
-                caption_id = item['id']
-                break
-        
-        if not caption_id:
-            logging.warning(f"No English captions found for '{title}' (ID: {video_id})")
-            return False
-        
-        caption_request = youtube.captions().download(
-            id=caption_id,
-            tfmt='vtt'
-        )
-        vtt_content = caption_request.execute().decode('utf-8')
-        
-        safe_title = sanitize_filename(title)
-        vtt_file = os.path.join(output_dir, f"{safe_title}_{video_id}.en.vtt")
-        txt_file = os.path.join(output_dir, f"{safe_title}_{video_id}.txt")
-        
-        with open(vtt_file, 'w', encoding='utf-8') as f:
-            f.write(vtt_content)
-        
-        if convert_vtt_to_txt(vtt_file, txt_file):
-            os.remove(vtt_file)
-            logging.info(f"Saved transcript via YouTube API for '{title}' (ID: {video_id})")
-            return True
-        else:
-            logging.warning(f"Conversion failed for '{title}' (ID: {video_id})")
-            return True
-            
-    except HttpError as e:
-        logging.error(f"YouTube API error for '{title}' (ID: {video_id}): {str(e)}")
-        return False
-    except Exception as e:
-        logging.error(f"Unexpected error in YouTube API for '{title}' (ID: {video_id}): {str(e)}")
-        return False
-
-def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None, api_key=None):
-    """Use yt-dlp to fetch subtitles with fallback to YouTube API."""
+def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None):
+    """Use yt-dlp to fetch subtitles."""
     try:
         safe_title = sanitize_filename(title)
         output_pattern = os.path.join(output_dir, f"{safe_title}_{video_id}")
@@ -240,14 +193,14 @@ def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None, api_
         ]
         
         if cookies_file and os.path.exists(cookies_file):
-            cmd.append('--cookies')
-            cmd.append(cookies_file)
-        elif os.environ.get('YOUTUBE_COOKIES_BROWSER'):
-            cmd.append('--cookies-from-browser')
-            cmd.append(os.environ.get('YOUTUBE_COOKIES_BROWSER'))
+            cmd.extend(['--cookies', cookies_file])
+            logging.info(f"Using cookies file: {cookies_file}")
+        else:
+            logging.warning("No cookies file provided. This may cause HTTP 429 errors.")
         
         cmd.append(f"https://www.youtube.com/watch?v={video_id}")
         
+        logging.info(f"Running yt-dlp command: {' '.join(cmd)}")
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=300)
         
         vtt_file = output_pattern + '.en.vtt'
@@ -261,18 +214,11 @@ def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None, api_
                 logging.warning(f"Conversion failed for '{title}' (ID: {video_id})")
                 return True
         
-        logging.warning(f"No subtitle file for '{title}' (ID: {video_id}), trying YouTube API...")
-        if api_key:
-            return fetch_youtube_api_transcript(api_key, video_id, output_dir, title)
-        else:
-            logging.warning(f"No API key provided, cannot use YouTube API fallback for '{title}' (ID: {video_id})")
-            return False
-            
+        logging.warning(f"No subtitle file for '{title}' (ID: {video_id})")
+        return False
+        
     except subprocess.CalledProcessError as e:
         logging.error(f"yt-dlp failed for '{title}' (ID: {video_id}): {e.stderr}")
-        if api_key:
-            logging.info(f"Falling back to YouTube API for '{title}' (ID: {video_id})")
-            return fetch_youtube_api_transcript(api_key, video_id, output_dir, title)
         return False
     except subprocess.TimeoutExpired:
         logging.error(f"yt-dlp timed out for '{title}' (ID: {video_id})")
@@ -281,7 +227,7 @@ def fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file=None, api_
         logging.error(f"yt-dlp error for '{title}' (ID: {video_id}): {str(e)}")
         return False
 
-def process_channel_transcripts(api_key, channel_url, delay=5, max_videos=50, cookies_file=None):
+def process_channel_transcripts(api_key, channel_url, delay=2, max_videos=50, cookies_file=None):
     """Main function to process transcripts for a channel."""
     try:
         filter_params = parse_channel_url(channel_url)
@@ -316,7 +262,7 @@ def process_channel_transcripts(api_key, channel_url, delay=5, max_videos=50, co
             logging.info(f"Processing {i}/{len(video_ids)}: {title}")
             
             for attempt in range(3):
-                success = fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file, api_key)
+                success = fetch_yt_dlp_transcript(video_id, title, output_dir, cookies_file)
                 if success:
                     success_count += 1
                     processed_ids.add(video_id)
@@ -332,7 +278,7 @@ def process_channel_transcripts(api_key, channel_url, delay=5, max_videos=50, co
                     save_progress(progress_file, processed_ids)
                     break
             
-            time.sleep(delay)
+            time.sleep(max(2, min(delay, 5)))  
         
         return {
             'channel_title': channel_details['title'],

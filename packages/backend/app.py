@@ -4,6 +4,7 @@ import os
 import logging
 from youtube_channel_transcripts import process_channel_transcripts
 
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -28,6 +29,8 @@ def scrape_transcripts():
         data = request.json
         channel_url = data.get('channel_url')
         cookies_file = data.get('cookies_file')
+        delay = float(data.get('delay', 2))  # Default to 2 seconds
+        max_videos = int(data.get('max_videos', 50))
         
         api_key = os.environ.get('YOUTUBE_API_KEY')
         
@@ -43,8 +46,9 @@ def scrape_transcripts():
             logging.error(f"Invalid YouTube URL: {channel_url}")
             return jsonify({'error': 'Invalid YouTube URL'}), 400
         
-        delay = float(data.get('delay', 5))
-        max_videos = int(data.get('max_videos', 50))
+        if delay < 2 or delay > 5:
+            logging.warning(f"Delay {delay} is outside recommended range (2-5 seconds). Adjusting to {max(2, min(delay, 5))}")
+            delay = max(2, min(delay, 5))  # Enforce 2-5 second range
         
         logging.info(f"Processing channel: {channel_url}")
         
