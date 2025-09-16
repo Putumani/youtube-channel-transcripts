@@ -1,6 +1,9 @@
-supabase
-yt-dlp
+supabase==2.18.1
+yt-dlp==2025.9.13.232728.dev0
 google-api-python-client==2.128.0
 google-auth-oauthlib==1.1.0
 google-auth-httplib2==0.2.0
 requests==2.32.3
+flask==2.3.3
+flask-cors==4.0.0
+python-dotenv==1.0.0

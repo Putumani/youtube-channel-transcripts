@@ -1,80 +1,84 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Toaster, useToast } from '@/components/ui/sonner';
-import './index.css';
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Toaster, useToast } from '@/components/ui/sonner'
+import { api } from '@/lib/api'
+import './index.css'
 
 function App() {
-  const [channelUrl, setChannelUrl] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [channels, setChannels] = useState([]);
-  const [transcripts, setTranscripts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const [channelUrl, setChannelUrl] = useState('')
+  const [channels, setChannels] = useState([])
+  const [transcripts, setTranscripts] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [scraping, setScraping] = useState(false)
+  const { toast } = useToast()
 
+  // Fetch channels on mount
   useEffect(() => {
-    fetchChannels();
-  }, []);
+    fetchChannels()
+  }, [])
 
+  // Fetch channels from Supabase
   const fetchChannels = async () => {
     try {
-      const { data, error } = await supabase.from('channels').select();
-      if (error) throw error;
-      setChannels(data || []);
+      const { data, error } = await supabase.from('channels').select()
+      if (error) throw error
+      setChannels(data || [])
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to fetch channels: ' + error.message,
         variant: 'destructive',
-      });
+      })
     }
-  };
+  }
 
+  // Fetch transcripts for a specific channel
   const fetchTranscripts = async (channelId) => {
     try {
       const { data, error } = await supabase
         .from('transcripts')
         .select()
-        .eq('channel_id', channelId);
-      if (error) throw error;
-      setTranscripts(data || []);
+        .eq('channel_id', channelId)
+      if (error) throw error
+      setTranscripts(data || [])
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to fetch transcripts: ' + error.message,
         variant: 'destructive',
-      });
+      })
     }
-  };
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  // Handle form submission to scrape transcripts
+  const handleScrapeTranscripts = async (e) => {
+    e.preventDefault()
+    setScraping(true)
+
     try {
+      const result = await api.scrapeTranscripts(channelUrl, 3, 50)
+
       toast({
-        title: 'Processing',
-        description:
-          'Please run the backend script with the provided URL and API key.',
-      });
+        title: 'Success',
+        description: `Processed ${result.videos_processed} videos from ${result.channel_title}`,
+      })
+
+      // Refresh channels list after scraping
+      fetchChannels()
+
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to process request: ' + error.message,
+        description: 'Failed to scrape transcripts: ' + error.message,
         variant: 'destructive',
-      });
+      })
     } finally {
-      setLoading(false);
+      setScraping(false)
     }
-  };
+  }
 
   return (
     <div className="container mx-auto p-4">
@@ -82,12 +86,9 @@ function App() {
       <h1 className="text-2xl font-bold mb-4">YouTube Transcript Scraper</h1>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="mb-6 space-y-4">
+      <form onSubmit={handleScrapeTranscripts} className="mb-6 space-y-4">
         <div>
-          <label
-            htmlFor="channelUrl"
-            className="block text-sm font-medium mb-1"
-          >
+          <label htmlFor="channelUrl" className="block text-sm font-medium mb-1">
             YouTube Channel URL
           </label>
           <Input
@@ -95,24 +96,12 @@ function App() {
             value={channelUrl}
             onChange={(e) => setChannelUrl(e.target.value)}
             placeholder="e.g., https://www.youtube.com/@channelhandle"
-            disabled={loading}
+            disabled={scraping}
+            required
           />
         </div>
-        <div>
-          <label htmlFor="apiKey" className="block text-sm font-medium mb-1">
-            YouTube API Key
-          </label>
-          <Input
-            id="apiKey"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your YouTube API key"
-            type="password"
-            disabled={loading}
-          />
-        </div>
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Processing...' : 'Fetch Transcripts'}
+        <Button type="submit" disabled={scraping}>
+          {scraping ? 'Scraping Transcripts...' : 'Scrape Transcripts'}
         </Button>
       </form>
 
@@ -175,7 +164,7 @@ function App() {
         </>
       )}
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

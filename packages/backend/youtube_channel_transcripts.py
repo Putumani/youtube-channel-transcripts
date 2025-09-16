@@ -7,13 +7,6 @@ import subprocess
 from urllib.parse import urlparse, parse_qs
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import importlib.metadata
-
-logging.basicConfig(
-    filename='transcript_scraper.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 
 def parse_channel_url(url):
     """Parse YouTube channel URL to extract handle or ID."""
@@ -48,24 +41,26 @@ def get_channel_details(api_key, filter_params):
         'uploads_playlist': channel['contentDetails']['relatedPlaylists']['uploads']
     }
 
-def get_all_video_ids(api_key, playlist_id):
-    """Fetch all video IDs from the uploads playlist."""
+def get_all_video_ids(api_key, playlist_id, max_videos=50):
+    """Fetch video IDs from the uploads playlist with limit."""
     youtube = build('youtube', 'v3', developerKey=api_key)
     video_ids = []
     next_page_token = None
     
-    while True:
+    while len(video_ids) < max_videos:
         try:
             request = youtube.playlistItems().list(
                 part='contentDetails',
                 playlistId=playlist_id,
-                maxResults=50,
+                maxResults=min(50, max_videos - len(video_ids)),
                 pageToken=next_page_token
             )
             response = request.execute()
             
             for item in response['items']:
                 video_ids.append(item['contentDetails']['videoId'])
+                if len(video_ids) >= max_videos:
+                    break
             
             next_page_token = response.get('nextPageToken')
             if not next_page_token:
@@ -73,7 +68,6 @@ def get_all_video_ids(api_key, playlist_id):
                 
         except HttpError as e:
             if e.resp.status == 403:
-                print("API quota exceeded. Waiting 60 seconds before retrying...")
                 logging.warning("API quota exceeded. Waiting 60 seconds.")
                 time.sleep(60)
                 continue
@@ -104,7 +98,6 @@ def get_video_titles(api_key, video_ids):
                 
         except HttpError as e:
             if e.resp.status == 403:
-                print("API quota exceeded. Waiting 60 seconds before retrying...")
                 logging.warning("API quota exceeded. Waiting 60 seconds.")
                 time.sleep(60)
                 continue
@@ -138,10 +131,9 @@ def save_progress(progress_file, processed_ids):
             json.dump(list(processed_ids), f)
     except IOError as e:
         logging.warning(f"Could not save progress file: {e}")
-        print(f"Warning: Could not save progress file: {e}")
 
 def convert_vtt_to_txt(vtt_file, txt_file):
-    """Convert VTT subtitle file to clean text format, removing tags, timestamps, duplicates, and non-speech artifacts."""
+    """Convert VTT subtitle file to clean text format."""
     try:
         seen_lines = set() 
         with open(vtt_file, 'r', encoding='utf-8') as vtt, open(txt_file, 'w', encoding='utf-8') as txt:
@@ -171,7 +163,6 @@ def convert_vtt_to_txt(vtt_file, txt_file):
         return True
     except Exception as e:
         logging.error(f"Error converting VTT to TXT: {str(e)}")
-        print(f"Error converting VTT to TXT: {str(e)}")
         return False
 
 def fetch_yt_dlp_transcript(video_id, title, output_dir):
@@ -197,82 +188,28 @@ def fetch_yt_dlp_transcript(video_id, title, output_dir):
         if os.path.exists(vtt_file):
             txt_file = output_pattern + '.txt'
             if convert_vtt_to_txt(vtt_file, txt_file):
-                os.remove(vtt_file)  
-                logging.info(f"Saved transcript via yt-dlp for '{title}' (ID: {video_id})")
-                print(f"✓ Saved transcript via yt-dlp for '{title}' (ID: {video_id})")
+                os.remove(vtt_file)
+                logging.info(f"Saved transcript for '{title}' (ID: {video_id})")
                 return True
             else:
-                logging.warning(f"Conversion failed, keeping VTT file for '{title}' (ID: {video_id})")
-                print(f"⚠ Conversion failed, keeping VTT file for '{title}' (ID: {video_id})")
+                logging.warning(f"Conversion failed for '{title}' (ID: {video_id})")
                 return True
         
-        logging.warning(f"No subtitle file created for '{title}' (ID: {video_id})")
-        print(f"⚠ No subtitle file created for '{title}' (ID: {video_id})")
+        logging.warning(f"No subtitle file for '{title}' (ID: {video_id})")
         return False
         
     except subprocess.CalledProcessError as e:
         logging.error(f"yt-dlp failed for '{title}' (ID: {video_id}): {e.stderr}")
-        print(f"✗ yt-dlp failed for '{title}' (ID: {video_id}): {e.stderr}")
         return False
     except subprocess.TimeoutExpired:
         logging.error(f"yt-dlp timed out for '{title}' (ID: {video_id})")
-        print(f"✗ yt-dlp timed out for '{title}' (ID: {video_id})")
         return False
     except Exception as e:
         logging.error(f"yt-dlp error for '{title}' (ID: {video_id}): {str(e)}")
-        print(f"✗ yt-dlp error for '{title}' (ID: {video_id}): {str(e)}")
         return False
 
-def fetch_and_save_transcript(video_id, title, output_dir, delay=2, processed_ids=None, progress_file=None):
-    """Fetch transcript using yt-dlp with retry logic."""
-    if video_id in processed_ids:
-        print(f"↻ Skipped '{title}' (ID: {video_id}) - Already processed")
-        return False
-    
-    for attempt in range(3):  
-        try:
-            success = fetch_yt_dlp_transcript(video_id, title, output_dir)
-            if success:
-                processed_ids.add(video_id)
-                save_progress(progress_file, processed_ids)
-                return True
-            else:
-                if attempt < 2:
-                    wait_time = 10 * (attempt + 1)  
-                    print(f"Retrying after {wait_time}s... (attempt {attempt + 1}/3)")
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    processed_ids.add(video_id)
-                    save_progress(progress_file, processed_ids)
-                    return False
-                    
-        except Exception as e:
-            logging.error(f"Unexpected error for '{title}' (ID: {video_id}): {str(e)}")
-            print(f"✗ Unexpected error for '{title}' (ID: {video_id}): {str(e)}")
-            if attempt < 2:
-                wait_time = 10 * (attempt + 1)
-                time.sleep(wait_time)
-                continue
-            else:
-                processed_ids.add(video_id)
-                save_progress(progress_file, processed_ids)
-                return False
-        finally:
-            time.sleep(delay)
-
-def main():
-    print("YouTube Channel Transcript Scraper")
-    print("----------------------------------")
-    
-    api_key = input("Enter your YouTube API key: ").strip()
-    if not api_key:
-        print("API key is required.")
-        logging.error("No API key provided.")
-        return
-    
-    channel_url = input("Enter the YouTube channel URL (e.g., https://www.youtube.com/@channelhandle): ").strip()
-    
+def process_channel_transcripts(api_key, channel_url, delay=3, max_videos=50):
+    """Main function to process transcripts for a channel."""
     try:
         filter_params = parse_channel_url(channel_url)
         channel_details = get_channel_details(api_key, filter_params)
@@ -280,55 +217,60 @@ def main():
         output_dir = os.path.join(os.getcwd(), channel_title)
         progress_file = os.path.join(os.getcwd(), f"{channel_title}_progress.json")
         
-        print(f"Channel: {channel_details['title']} (ID: {channel_details['id']})")
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
         logging.info(f"Processing channel: {channel_details['title']} (ID: {channel_details['id']})")
         
-        print("Loading progress...")
+        # Load progress
         processed_ids = load_progress(progress_file)
         
-        print("Fetching video IDs...")
-        video_ids = get_all_video_ids(api_key, channel_details['uploads_playlist'])
+        # Fetch video IDs
+        video_ids = get_all_video_ids(api_key, channel_details['uploads_playlist'], max_videos)
         video_ids = [vid for vid in video_ids if vid not in processed_ids]
-        print(f"Found {len(video_ids)} new videos to process.")
-        logging.info(f"Found {len(video_ids)} new videos to process.")
         
         if not video_ids:
-            print("No new videos to process.")
-            logging.info("No new videos to process.")
-            return
+            return {
+                'channel_title': channel_details['title'],
+                'videos_processed': 0,
+                'total_videos': 0,
+                'message': 'No new videos to process'
+            }
         
-        print("Fetching video titles...")
+        # Fetch video titles
         title_map = get_video_titles(api_key, video_ids)
         
-        delay = float(input("Enter delay between transcript fetches (seconds, recommended 2-5): ") or 2)
-        if delay < 2:
-            print("Warning: Delay < 2s may cause throttling. Proceeding anyway.")
-            logging.warning("Delay set to %s seconds, may cause throttling.", delay)
-        
-        print("Fetching transcripts using yt-dlp...")
+        # Process transcripts
         success_count = 0
         for i, video_id in enumerate(video_ids, 1):
             title = title_map.get(video_id, f"Video_{video_id}")
-            print(f"Processing {i}/{len(video_ids)}: {title}")
-            if fetch_and_save_transcript(video_id, title, output_dir, delay, processed_ids, progress_file):
-                success_count += 1
+            logging.info(f"Processing {i}/{len(video_ids)}: {title}")
+            
+            for attempt in range(3):
+                success = fetch_yt_dlp_transcript(video_id, title, output_dir)
+                if success:
+                    success_count += 1
+                    processed_ids.add(video_id)
+                    save_progress(progress_file, processed_ids)
+                    break
+                elif attempt < 2:
+                    wait_time = 10 * (attempt + 1)
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    processed_ids.add(video_id)
+                    save_progress(progress_file, processed_ids)
+                    break
+            
+            time.sleep(delay)
         
-        print(f"Done! {success_count}/{len(video_ids)} new transcripts saved to '{output_dir}'.")
-        logging.info(f"Completed: {success_count}/{len(video_ids)} new transcripts saved to '{output_dir}'.")
+        return {
+            'channel_title': channel_details['title'],
+            'videos_processed': success_count,
+            'total_videos': len(video_ids),
+            'output_dir': output_dir
+        }
     
-    except HttpError as e:
-        if e.resp.status == 403:
-            print("API Error: Quota exceeded or API key invalid. Check your Google Cloud Console.")
-            logging.error("API Error: Quota exceeded or API key invalid.")
-        else:
-            print(f"API Error: {str(e)}")
-            logging.error(f"API Error: {str(e)}")
-    except ValueError as e:
-        print(f"Error: {str(e)}")
-        logging.error(f"ValueError: {str(e)}")
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        logging.error(f"Unexpected error: {str(e)}")
-
-if __name__ == "__main__":
-    main()
+        logging.error(f"Error processing channel: {str(e)}")
+        raise
